@@ -1,0 +1,62 @@
+// ===== 工具集 - 简约工具风设计系统 =====
+
+// 主色系 - 蓝
+$color-primary: #4A90D9;
+$color-primary-dark: #2B5FA8;
+$color-primary-light: #A8C8F0;
+$color-primary-bg: rgba(74, 144, 217, 0.08);
+
+// 辅助色
+$color-accent: #5B9E8A;
+$color-accent-bg: rgba(91, 158, 138, 0.08);
+$color-warning: #F0A040;
+$color-danger: #E05555;
+
+// 背景色
+$color-bg: #F5F7FA;
+$color-bg-card: #FFFFFF;
+$color-bg-secondary: #EDF1F5;
+
+// 文字色
+$color-text: #1A1A1A;
+$color-text-secondary: #5A5A5A;
+$color-text-muted: #999999;
+$color-text-inverse: #FFFFFF;
+
+// 边框
+$color-border: #E8ECF0;
+$color-border-light: #F2F4F6;
+
+// 功能色
+$color-success: #5B9E8A;
+
+// ===== 间距 =====
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 48rpx;
+$spacing-2xl: 64rpx;
+
+// ===== 圆角 =====
+$radius-xs: 6rpx;
+$radius-sm: 12rpx;
+$radius-md: 20rpx;
+$radius-lg: 28rpx;
+$radius-xl: 36rpx;
+$radius-full: 999rpx;
+
+// ===== 阴影 =====
+$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+$shadow-md: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+$shadow-card: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+
+// ===== 字体 =====
+$font-xs: 22rpx;
+$font-sm: 26rpx;
+$font-md: 30rpx;
+$font-lg: 36rpx;
+$font-xl: 44rpx;
+$font-2xl: 56rpx;
+$font-3xl: 72rpx;

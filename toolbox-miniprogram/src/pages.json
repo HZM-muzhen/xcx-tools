@@ -1,0 +1,41 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "工具集" } },
+    { "path": "pages/history/history", "style": { "navigationBarTitleText": "使用历史" } },
+    { "path": "pages/my/my", "style": { "navigationBarTitleText": "我的" } }
+  ],
+  "subPackages": [
+    {
+      "root": "pages/tools",
+      "pages": [
+        { "path": "voice-notes/voice-notes", "style": { "navigationBarTitleText": "语音转文字" } },
+        { "path": "voice-notes/note-detail", "style": { "navigationBarTitleText": "会议记录详情" } },
+        { "path": "copywriting/copywriting", "style": { "navigationBarTitleText": "文案生成" } },
+        { "path": "copywriting/generator", "style": { "navigationBarTitleText": "生成文案" } },
+        { "path": "ocr/ocr", "style": { "navigationBarTitleText": "文字识别" } },
+        { "path": "ocr/ocr-result", "style": { "navigationBarTitleText": "识别结果" } },
+        { "path": "memo-box/memo-box", "style": { "navigationBarTitleText": "周记匣 MemoBox" } },
+        { "path": "greeting-card/greeting-card", "style": { "navigationBarTitleText": "祝福贺卡" } },
+        { "path": "image-process/image-process", "style": { "navigationBarTitleText": "图片处理" } },
+        { "path": "fun-image/fun-image", "style": { "navigationBarTitleText": "趣味图片" } }
+      ]
+    }
+  ],
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#4A90D9",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "工具", "iconPath": "static/tabbar/tools.png", "selectedIconPath": "static/tabbar/tools-active.png" },
+      { "pagePath": "pages/history/history", "text": "历史", "iconPath": "static/tabbar/history.png", "selectedIconPath": "static/tabbar/history-active.png" },
+      { "pagePath": "pages/my/my", "text": "我的", "iconPath": "static/tabbar/my.png", "selectedIconPath": "static/tabbar/my-active.png" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "工具集",
+    "backgroundColor": "#F5F7FA"
+  }
+}
