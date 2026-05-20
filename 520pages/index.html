@@ -2,14 +2,21 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>520 ❤️</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  :root {
+    --pink: #e74c6f;
+    --pink-light: #f06292;
+    --gold: #f8c291;
+    --bg: #1a0a0a;
+  }
+
   body {
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     background: linear-gradient(135deg, #1a0a0a 0%, #2d0a1a 30%, #1a0a2d 60%, #0a0a1a 100%);
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -19,314 +26,741 @@
     -webkit-user-select: none;
   }
 
-  canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 0; }
+  /* --- Canvas --- */
+  canvas#bg { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 0; }
 
-  .stage {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 20px;
+  /* --- Shared layers --- */
+  .fx-layer {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 5;
   }
 
-  .envelope {
-    width: 260px;
-    height: 180px;
+  /* --- Stage --- */
+  .stage {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: calc(100dvh - 90px); padding: 20px;
+  }
+  .stage-content { display: none; width: 100%; }
+  .stage-content.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+
+  .hint {
+    color: rgba(255,255,255,0.6); font-size: 13px; margin-top: 18px;
+    animation: fadeHint 2s ease-in-out infinite; letter-spacing: 2px;
+    transition: opacity 0.3s;
+  }
+  .hint.hidden { opacity: 0; pointer-events: none; }
+  @keyframes fadeHint { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* --- Bottom Nav: frosted floating pill --- */
+  .nav {
+    position: fixed; bottom: 20px; left: 50%; z-index: 20;
+    transform: translateX(-50%);
+    display: flex; align-items: center; justify-content: center;
+    height: 60px; padding: 0 6px;
+    background: rgba(30,10,20,0.65);
+    border-radius: 30px;
+    border: 0.5px solid rgba(255,255,255,0.06);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+    overflow: hidden;
+    width: fit-content; max-width: 94vw;
+  }
+  .nav::before {
+    content: ''; position: absolute; inset: 0; border-radius: 30px;
+    background: linear-gradient(135deg, rgba(231,76,111,0.08), rgba(240,98,146,0.04), rgba(180,130,255,0.06));
+    pointer-events: none;
+  }
+  .nav-item {
     position: relative;
-    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer; white-space: nowrap;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    -webkit-tap-highlight-color: transparent;
+    padding: 6px 0; width: 64px;
+    opacity: 0; pointer-events: none;
+    z-index: 1;
+  }
+  .nav-item.pos-left {
+    opacity: 0.35; pointer-events: auto;
+    filter: blur(0.3px);
+  }
+  .nav-item.pos-center {
+    opacity: 1; pointer-events: auto;
+    background: linear-gradient(135deg, rgba(231,76,111,0.7), rgba(240,98,146,0.5));
+    border-radius: 22px; padding: 6px 4px; width: 72px;
+    box-shadow: 0 0 20px rgba(231,76,111,0.3), 0 4px 12px rgba(0,0,0,0.3);
+    filter: none;
+  }
+  .nav-item.pos-right {
+    opacity: 0.35; pointer-events: auto;
+    filter: blur(0.3px);
+  }
+  .nav-item .icon { font-size: 18px; transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+  .nav-item .label { font-size: 10px; color: rgba(255,255,255,0.55); transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); letter-spacing: 1px; }
+  .nav-item.pos-center .icon { font-size: 24px; filter: drop-shadow(0 0 6px rgba(255,255,255,0.5)); }
+  .nav-item.pos-center .label { color: #fff; font-weight: 600; font-size: 11px; }
+  .nav-item.nav-pulse { animation: navPulse 0.35s ease-out; }
+  @keyframes navPulse {
+    0% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+
+  /* ============ MODE 1: 信封 ============ */
+  .envelope {
+    width: 260px; height: 180px; position: relative; cursor: pointer;
     transition: transform 0.3s;
   }
   .envelope:active { transform: scale(0.95); }
-
   .envelope-body {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 160px;
+    position: absolute; bottom: 0; width: 100%; height: 160px;
     background: linear-gradient(135deg, #e74c6f, #c0392b);
     border-radius: 12px;
     clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%);
-    box-shadow: 0 10px 40px rgba(231, 76, 111, 0.4);
+    box-shadow: 0 10px 40px rgba(231,76,111,0.4);
   }
-
   .envelope-flap {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 120px;
+    position: absolute; top: 0; left: 0; width: 100%; height: 120px;
     background: linear-gradient(135deg, #f06292, #e74c6f);
     clip-path: polygon(0 0, 50% 100%, 100% 0);
     border-radius: 12px 12px 0 0;
-    transform-origin: top center;
-    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    z-index: 2;
-    box-shadow: 0 4px 20px rgba(231, 76, 111, 0.3);
+    transform-origin: top center; z-index: 2;
+    transition: transform 0.6s cubic-bezier(0.68,-0.55,0.27,1.55);
+    box-shadow: 0 4px 20px rgba(231,76,111,0.3);
   }
   .envelope.open .envelope-flap { transform: rotateX(180deg); }
-
   .envelope-heart {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 3;
-    font-size: 40px;
-    pointer-events: none;
-    transition: opacity 0.3s;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    z-index: 3; font-size: 40px; pointer-events: none; transition: opacity 0.3s;
   }
   .envelope.open .envelope-heart { opacity: 0; }
   .envelope-heart-inner {
     display: inline-block;
     animation: heartBeat 1.2s ease-in-out infinite;
-    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.6));
   }
   @keyframes heartBeat {
-    0%, 100% { transform: scale(1); }
-    15% { transform: scale(1.3); }
-    30% { transform: scale(1); }
-    45% { transform: scale(1.2); }
-    60% { transform: scale(1); }
+    0%,100%{transform:scale(1)} 15%{transform:scale(1.3)} 30%{transform:scale(1)} 45%{transform:scale(1.2)} 60%{transform:scale(1)}
   }
 
-  .hint {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 13px;
-    margin-top: 20px;
-    animation: fadeHint 2s ease-in-out infinite;
-    letter-spacing: 2px;
+  /* --- Card overlay (shared) --- */
+  .card-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 15; display: flex; align-items: center; justify-content: center;
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
   }
-  @keyframes fadeHint {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
+  .card-overlay.show { opacity: 1; pointer-events: auto; }
+  .card-overlay .backdrop {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
   }
-  .hint.hidden { opacity: 0; pointer-events: none; }
-
-  .card {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    width: 300px;
-    max-width: 90vw;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 35px 25px;
-    text-align: center;
-    z-index: 10;
-    opacity: 0;
-    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
+  .card-dialog {
+    position: relative;
+    width: 310px; max-width: 90vw;
+    background: rgba(255,255,255,0.95); border-radius: 20px;
+    padding: 35px 25px; text-align: center;
+    transform: scale(0);
+    transition: transform 0.5s cubic-bezier(0.68,-0.55,0.27,1.55);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
   }
-  .card.show {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-
+  .card-overlay.show .card-dialog { transform: scale(1); }
   .card-close {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    font-size: 24px;
-    color: #999;
-    cursor: pointer;
-    width: 36px;
-    height: 36px;
-    line-height: 36px;
-    border-radius: 50%;
+    position: absolute; top: 10px; right: 14px;
+    font-size: 22px; color: #999; cursor: pointer;
+    width: 34px; height: 34px; line-height: 34px; border-radius: 50%;
     transition: background 0.2s;
   }
-  .card-close:active { background: rgba(0, 0, 0, 0.05); }
-
+  .card-close:active { background: rgba(0,0,0,0.05); }
   .card-title {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 24px; font-weight: 700;
     background: linear-gradient(135deg, #e74c6f, #f06292, #e74c6f);
     background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: shimmer 2s linear infinite;
     margin-bottom: 8px;
   }
-  @keyframes shimmer {
-    to { background-position: 200% center; }
-  }
-
-  .card-date {
-    font-size: 13px;
-    color: #ccc;
-    margin-bottom: 20px;
-    letter-spacing: 2px;
-  }
-
-  .card-msg {
-    font-size: 15px;
-    color: #555;
-    line-height: 1.8;
-    margin-bottom: 20px;
-    white-space: pre-line;
-  }
-
+  @keyframes shimmer { to { background-position: 200% center; } }
+  .card-date { font-size: 12px; color: #bbb; margin-bottom: 18px; letter-spacing: 2px; }
   .card-divider {
-    width: 40px;
-    height: 2px;
+    width: 40px; height: 2px;
     background: linear-gradient(90deg, #e74c6f, #f06292);
-    margin: 0 auto 20px;
-    border-radius: 1px;
+    margin: 0 auto 18px; border-radius: 1px;
   }
-
+  .card-msg { font-size: 15px; color: #555; line-height: 1.8; margin-bottom: 18px; white-space: pre-line; }
   .card-btn {
-    display: inline-block;
-    padding: 12px 35px;
-    background: linear-gradient(135deg, #e74c6f, #c0392b);
-    color: #fff;
-    border: none;
-    border-radius: 25px;
-    font-size: 15px;
-    cursor: pointer;
-    letter-spacing: 2px;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 6px 20px rgba(231, 76, 111, 0.4);
+    display: inline-block; padding: 12px 35px;
+    background: linear-gradient(135deg, #e74c6f, #c0392b); color: #fff;
+    border: none; border-radius: 25px; font-size: 15px; cursor: pointer;
+    letter-spacing: 2px; transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 20px rgba(231,76,111,0.4);
   }
   .card-btn:active { transform: scale(0.95); }
-
-  .hearts-rain {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 5;
+  .card-secret-hint {
+    font-size: 11px; color: rgba(0,0,0,0.2); margin-top: 12px;
+    letter-spacing: 1px;
   }
 
-  .rain-heart {
+  /* ============ MODE 2: 气球 ============ */
+  .balloon-area {
+    position: relative; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .balloon {
     position: absolute;
-    animation: rainFall linear forwards;
-    opacity: 0.8;
+    width: 70px; height: 88px;
+    border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+    cursor: pointer;
+    animation: balloonFloat 6s ease-in-out infinite;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+    transition: transform 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
   }
-  @keyframes rainFall {
-    0% {
-      transform: translateY(-10vh) rotate(0deg) scale(0.5);
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 0.6;
-    }
-    100% {
-      transform: translateY(105vh) rotate(360deg) scale(1);
-      opacity: 0;
-    }
+  .balloon::before {
+    content: ''; position: absolute; bottom: -16px; left: 50%;
+    width: 2px; height: 16px;
+    background: rgba(255,255,255,0.5);
+    transform: translateX(-50%);
+  }
+  .balloon::after {
+    content: ''; position: absolute; bottom: -28px; left: 50%;
+    width: 12px; height: 14px;
+    background: inherit;
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+    transform: translateX(-50%);
+    opacity: 0.6;
+  }
+  .balloon:active { transform: scale(1.3); }
+  .balloon.popping {
+    animation: balloonPop 0.3s ease-out forwards !important;
+    pointer-events: none;
+  }
+  @keyframes balloonPop {
+    0% { transform: scale(1.3); opacity: 1; }
+    50% { transform: scale(2); opacity: 0.5; }
+    100% { transform: scale(0); opacity: 0; }
+  }
+  @keyframes balloonFloat {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-20px) rotate(2deg); }
+    50% { transform: translateY(-10px) rotate(-1deg); }
+    75% { transform: translateY(-25px) rotate(1deg); }
   }
 
-  .click-ripple {
-    position: fixed;
+  .balloon-words {
+    position: fixed; pointer-events: none; z-index: 8;
+    font-size: 20px; font-weight: 700;
+    animation: wordFloat 3s ease-out forwards;
+    color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5);
+    white-space: nowrap;
+  }
+  @keyframes wordFloat {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) translateY(-120px) scale(0.6); opacity: 0; }
+  }
+
+  /* ============ MODE 3: 星空 ============ */
+  .stars-area {
+    position: relative; width: 100%; min-height: 280px;
+    cursor: crosshair;
+  }
+  .star-dot {
+    position: absolute; pointer-events: none;
+    font-size: 22px;
+    animation: starTwinkle 2s ease-in-out infinite;
+  }
+  @keyframes starTwinkle {
+    0%,100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+  .star-line {
+    position: fixed; pointer-events: none; z-index: 6;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,215,0,0.8), rgba(255,215,0,0.2));
+    transform-origin: left center;
+    animation: lineGlow 2s ease-out forwards;
+  }
+  @keyframes lineGlow {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .shooting-star {
+    position: fixed; pointer-events: none; z-index: 6;
+    font-size: 28px;
+    animation: shoot 1.5s ease-out forwards;
+  }
+  @keyframes shoot {
+    0% { transform: translate(0,0) scale(0); opacity: 0; }
+    20% { transform: translate(80px,-40px) scale(1.2); opacity: 1; }
+    100% { transform: translate(400px,-200px) scale(0.3); opacity: 0; }
+  }
+  .wish-text {
+    position: fixed; pointer-events: none; z-index: 8;
+    font-size: 16px; color: #f8c291;
+    animation: wishReveal 2.5s ease-out forwards;
+    text-shadow: 0 0 15px rgba(248,194,145,0.6);
+    letter-spacing: 2px;
+  }
+  @keyframes wishReveal {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+    40% { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) translateY(-60px) scale(0.8); opacity: 0; }
+  }
+
+  /* ============ MODE 4: 花瓣 ============ */
+  .garden-area {
+    position: relative; width: 100%; min-height: 320px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 20px;
+  }
+  .rose-bud {
+    width: 90px; height: 90px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px;
+    transition: transform 0.3s;
+    filter: grayscale(0.4) brightness(0.7);
+    animation: budBreathe 3s ease-in-out infinite;
+  }
+  .rose-bud:nth-child(2) { animation-delay: 0.5s; }
+  .rose-bud:nth-child(3) { animation-delay: 1s; }
+  .rose-bud:nth-child(4) { animation-delay: 1.5s; }
+  .rose-bud:nth-child(5) { animation-delay: 2s; }
+  .rose-bud:nth-child(6) { animation-delay: 2.5s; }
+  @keyframes budBreathe {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .rose-bud.blooming {
+    animation: bloom 0.8s ease-out forwards !important;
     pointer-events: none;
-    z-index: 8;
-    font-size: 30px;
+  }
+  @keyframes bloom {
+    0% { transform: scale(1); filter: grayscale(0.4) brightness(0.7); }
+    50% { transform: scale(1.4); filter: grayscale(0) brightness(1.2); }
+    100% { transform: scale(1.1); filter: grayscale(0) brightness(1); }
+  }
+  .rose-bud.bloomed {
+    filter: grayscale(0) brightness(1.1);
+    animation: bloomedGlow 2s ease-in-out infinite !important;
+  }
+  @keyframes bloomedGlow {
+    0%,100% { transform: scale(1.05); filter: brightness(1.1); }
+    50% { transform: scale(1.15); filter: brightness(1.3) drop-shadow(0 0 12px rgba(255,100,150,0.6)); }
+  }
+  .petal {
+    position: fixed; pointer-events: none; z-index: 6;
+    font-size: 20px;
+    animation: petalFall linear forwards;
+  }
+  @keyframes petalFall {
+    0% { transform: translateY(-5vh) translateX(0) rotate(0deg); opacity: 0.8; }
+    100% { transform: translateY(105vh) translateX(60px) rotate(360deg); opacity: 0; }
+  }
+
+  /* ============ MODE 5: 烟花 ============ */
+  .firework-area {
+    position: relative; width: 100%; min-height: 300px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .firework-trigger {
+    font-size: 64px; cursor: pointer; transition: transform 0.2s;
+    animation: triggerPulse 2s ease-in-out infinite;
+  }
+  .firework-trigger:active { transform: scale(0.85); }
+  @keyframes triggerPulse {
+    0%,100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.08); filter: brightness(1.3) drop-shadow(0 0 15px rgba(255,200,50,0.6)); }
+  }
+  .spark {
+    position: fixed; pointer-events: none; z-index: 6;
+    width: 4px; height: 4px; border-radius: 50%;
+    animation: sparkFly 1.2s ease-out forwards;
+  }
+  @keyframes sparkFly {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+  .firework-msg {
+    position: fixed; pointer-events: none; z-index: 8;
+    font-size: 22px; font-weight: 700; color: #fff;
+    animation: fwMsg 2s ease-out forwards;
+    text-shadow: 0 0 20px rgba(255,200,100,0.8);
+    letter-spacing: 3px;
+  }
+  @keyframes fwMsg {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  }
+
+  /* --- Transfer Easter Egg --- */
+  .transfer-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 30; display: flex; align-items: center; justify-content: center;
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  }
+  .transfer-overlay.show { opacity: 1; pointer-events: auto; }
+  .transfer-backdrop {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+  }
+  .transfer-card {
+    position: relative;
+    width: 300px; max-width: 88vw;
+    background: linear-gradient(180deg, #2d0a1a 0%, #1a0a2d 100%);
+    border-radius: 20px; padding: 0 0 24px; text-align: center;
+    transform: scale(0);
+    transition: transform 0.5s cubic-bezier(0.68,-0.55,0.27,1.55);
+    box-shadow: 0 0 40px rgba(231,76,111,0.5), 0 20px 60px rgba(0,0,0,0.5);
+    color: #fff; overflow: hidden;
+    border: 1px solid rgba(231,76,111,0.3);
+  }
+  .transfer-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, #e74c6f, #f06292, #f8c291, #f06292, #e74c6f);
+    background-size: 200% auto; animation: shimmer 2s linear infinite;
+  }
+  .transfer-overlay.show .transfer-card { transform: scale(1); }
+  .transfer-close {
+    position: absolute; top: 12px; right: 14px;
+    font-size: 18px; color: rgba(255,255,255,0.6); cursor: pointer;
+    width: 30px; height: 30px; line-height: 30px; border-radius: 50%;
+    z-index: 2;
+  }
+  .transfer-close:active { background: rgba(255,255,255,0.1); }
+  .transfer-emoji {
+    font-size: 48px; padding: 32px 0 10px;
+    animation: tEmojiBounce 0.6s ease-out;
+  }
+  @keyframes tEmojiBounce {
+    0% { transform: scale(0) rotate(-10deg); }
+    60% { transform: scale(1.2) rotate(3deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .transfer-title {
+    font-size: 18px; font-weight: 700; letter-spacing: 2px;
+    padding-bottom: 16px; border-bottom: 1px dashed rgba(255,255,255,0.15);
+    margin: 0 24px 16px;
+    background: linear-gradient(135deg, #f06292, #f8c291);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .transfer-body {
+    font-size: 15px; line-height: 2; padding: 0 24px;
+    background: rgba(231,76,111,0.08); margin: 0 16px; border-radius: 12px;
+    padding: 16px; color: rgba(255,255,255,0.85);
+  }
+  .transfer-name { color: #f06292; font-weight: 700; }
+  .transfer-amount {
+    font-size: 28px; font-weight: 800;
+    background: linear-gradient(135deg, #f8c291, #f06292);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 2px;
+  }
+  .transfer-meme {
+    font-size: 32px; padding: 12px 0 6px;
+    animation: tMemeShake 0.5s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+  @keyframes tMemeShake {
+    0%,100% { transform: rotate(0); }
+    25% { transform: rotate(5deg); }
+    75% { transform: rotate(-5deg); }
+  }
+  .transfer-footer {
+    font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 1px;
+    margin-top: 10px;
+  }
+
+  /* ============ MODE 6: 答案之书 ============ */
+  .oracle-area {
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+  }
+  .oracle-crystal {
+    font-size: 100px; cursor: pointer;
+    animation: crystalFloat 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 30px rgba(180,130,255,0.7));
+    transition: transform 0.2s;
+  }
+  .oracle-crystal:active { transform: scale(0.9); }
+  .oracle-crystal.shaking {
+    animation: crystalShake 0.6s ease-out;
+  }
+  @keyframes crystalFloat {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  @keyframes crystalShake {
+    0%,100% { transform: translateX(0); }
+    10% { transform: translateX(-8px) rotate(-5deg); }
+    20% { transform: translateX(8px) rotate(5deg); }
+    30% { transform: translateX(-6px) rotate(-3deg); }
+    40% { transform: translateX(6px) rotate(3deg); }
+    50% { transform: translateX(-4px); }
+    60% { transform: translateX(4px); }
+    70% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+  }
+  .oracle-answer {
+    font-size: 18px; color: #fff; text-align: center; min-height: 60px;
+    padding: 16px 24px; background: rgba(255,255,255,0.08); border-radius: 16px;
+    max-width: 280px; line-height: 1.6;
+    text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    transition: all 0.4s; letter-spacing: 1px;
+  }
+
+  /* ============ MODE 7: 心动频率 ============ */
+  .heartbeat-area {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  .hb-heart {
+    font-size: 80px; cursor: pointer;
+    animation: hbPulse 1s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(255,60,80,0.6));
+    transition: transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hb-heart:active { transform: scale(0.9); }
+  .hb-heart.beat { animation: hbBeat 0.15s ease-out; }
+  @keyframes hbPulse {
+    0%,100% { transform: scale(1); }
+    8% { transform: scale(1.15); }
+    16% { transform: scale(1); }
+    24% { transform: scale(1.1); }
+    32% { transform: scale(1); }
+  }
+  @keyframes hbBeat {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .hb-bpm {
+    font-size: 42px; font-weight: 700; color: #f06292;
+    text-shadow: 0 0 15px rgba(240,98,146,0.5);
+  }
+  .hb-bpm span { font-size: 14px; font-weight: 400; color: rgba(255,255,255,0.5); }
+  .hb-msg {
+    font-size: 15px; color: rgba(255,255,255,0.7); letter-spacing: 2px;
+    transition: all 0.3s; min-height: 24px;
+  }
+
+  /* ============ MODE 8: 甜蜜留言墙 ============ */
+  .notes-wall {
+    position: relative; width: 100%; min-height: 340px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 15px;
+  }
+  .sticky-note {
+    width: 100px; height: 100px; padding: 12px 10px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 12px; color: #555; line-height: 1.5;
+    cursor: pointer; word-break: break-all;
+    animation: noteAppear 0.5s cubic-bezier(0.68,-0.55,0.27,1.55) forwards;
+    transition: transform 0.2s; letter-spacing: 1px;
+  }
+  .sticky-note:active { transform: scale(1.1) rotate(0deg) !important; }
+  .sticky-note:nth-child(odd) { transform: rotate(-3deg); }
+  .sticky-note:nth-child(even) { transform: rotate(2deg); }
+  .sticky-note:nth-child(3n) { transform: rotate(4deg); }
+  .sticky-note:nth-child(5n+1) { transform: rotate(-2deg); }
+  @keyframes noteAppear {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    100% { opacity: 1; }
+  }
+  .note-pop {
+    position: fixed; pointer-events: none; z-index: 8;
+    font-size: 16px; color: #fff;
+    animation: noteFloat 3s ease-out forwards;
+    text-shadow: 0 0 8px rgba(255,255,255,0.6);
+    letter-spacing: 1px;
+  }
+  @keyframes noteFloat {
+    0% { transform: translate(-50%,-50%) scale(0.5) rotate(-10deg); opacity: 0; }
+    20% { transform: translate(-50%,-50%) scale(1.1) rotate(2deg); opacity: 1; }
+    100% { transform: translate(-50%,-50%) translateY(-80px) scale(0.8) rotate(5deg); opacity: 0; }
+  }
+
+  /* --- Shared FX: click ripple, emoji burst, rain --- */
+  .click-ripple {
+    position: fixed; pointer-events: none; z-index: 8;
+    font-size: 28px;
     animation: popUp 1s ease-out forwards;
   }
   @keyframes popUp {
-    0% {
-      transform: translate(-50%, -50%) scale(0);
-      opacity: 1;
-    }
-    50% {
-      transform: translate(-50%, -80%) scale(1.5);
-      opacity: 0.8;
-    }
-    100% {
-      transform: translate(-50%, -200%) scale(0.5);
-      opacity: 0;
-    }
+    0% { transform: translate(-50%,-50%) scale(0); opacity: 1; }
+    50% { transform: translate(-50%,-80%) scale(1.5); opacity: 0.8; }
+    100% { transform: translate(-50%,-200%) scale(0.5); opacity: 0; }
   }
-
   .emoji-burst {
-    position: fixed;
-    pointer-events: none;
-    z-index: 8;
+    position: fixed; pointer-events: none; z-index: 8;
     font-size: 24px;
     animation: burstUp 1.5s ease-out forwards;
   }
   @keyframes burstUp {
-    0% {
-      transform: translate(-50%, -50%) scale(0) rotate(0deg);
-      opacity: 1;
-    }
-    100% {
-      transform: translate(-50%, -300%) scale(1.5) rotate(180deg);
-      opacity: 0;
-    }
+    0% { transform: translate(-50%,-50%) scale(0) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%,-300%) scale(1.5) rotate(180deg); opacity: 0; }
+  }
+  .rain-heart {
+    position: absolute;
+    animation: rainFall linear forwards; opacity: 0.8;
+  }
+  @keyframes rainFall {
+    0% { transform: translateY(-10vh) rotate(0deg) scale(0.5); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(105vh) rotate(360deg) scale(1); opacity: 0; }
   }
 </style>
 </head>
 <body>
 
 <canvas id="bg"></canvas>
-<div class="hearts-rain" id="heartsRain"></div>
+<div class="fx-layer" id="fxLayer"></div>
 
+<!-- ====== Stage: 5 modes ====== -->
 <div class="stage" id="stage">
-  <div class="envelope" id="envelope">
-    <div class="envelope-body"></div>
-    <div class="envelope-flap"></div>
-    <div class="envelope-heart">
-      <span class="envelope-heart-inner">❤️</span>
+
+  <!-- MODE 1: 信封情书 -->
+  <div class="stage-content active" data-mode="0">
+    <div class="envelope" id="envelope">
+      <div class="envelope-body"></div>
+      <div class="envelope-flap"></div>
+      <div class="envelope-heart"><span class="envelope-heart-inner">❤️</span></div>
     </div>
+    <div class="hint" id="hintEnv">👆 点一下信封</div>
   </div>
-  <div class="hint" id="hint">👆 点一下信封</div>
+
+  <!-- MODE 2: 告白气球 -->
+  <div class="stage-content" data-mode="1">
+    <div class="balloon-area" id="balloonArea"></div>
+    <div class="hint">🎈 戳破气球有惊喜</div>
+  </div>
+
+  <!-- MODE 3: 许愿星空 -->
+  <div class="stage-content" data-mode="2">
+    <div class="stars-area" id="starsArea"></div>
+    <div class="hint">🌟 点击星空许愿吧</div>
+  </div>
+
+  <!-- MODE 4: 玫瑰之约 -->
+  <div class="stage-content" data-mode="3">
+    <div class="garden-area" id="gardenArea"></div>
+    <div class="hint">🌹 轻触花苞让它绽放</div>
+  </div>
+
+  <!-- MODE 5: 心动烟花 -->
+  <div class="stage-content" data-mode="4">
+    <div class="firework-area" id="fireworkArea">
+      <div class="firework-trigger" id="fireworkTrigger">🎆</div>
+    </div>
+    <div class="hint">🎇 点击烟花尽情绽放</div>
+  </div>
+
+  <!-- MODE 6: 答案之书 -->
+  <div class="stage-content" data-mode="5">
+    <div class="oracle-area" id="oracleArea">
+      <div class="oracle-crystal" id="oracleCrystal">🔮</div>
+      <div class="oracle-answer" id="oracleAnswer"></div>
+    </div>
+    <div class="hint">🔮 点击水晶球获取爱的答案</div>
+  </div>
+
+  <!-- MODE 7: 心动频率 -->
+  <div class="stage-content" data-mode="6">
+    <div class="heartbeat-area" id="heartbeatArea">
+      <div class="hb-heart" id="hbHeart">❤️</div>
+      <div class="hb-bpm" id="hbBpm">72 <span>BPM</span></div>
+      <div class="hb-msg" id="hbMsg">轻触红心</div>
+    </div>
+    <div class="hint">💓 不停点击红心，让它越跳越快</div>
+  </div>
+
+  <!-- MODE 8: 甜蜜留言墙 -->
+  <div class="stage-content" data-mode="7">
+    <div class="notes-wall" id="notesWall"></div>
+    <div class="hint">💌 点击空白处贴上你的留言</div>
+  </div>
 </div>
 
-<div class="card" id="card">
-  <div class="card-close" id="cardClose">✕</div>
-  <div class="card-title">💌 520 快乐</div>
-  <div class="card-date">2026 · 05 · 20</div>
-  <div class="card-divider"></div>
-  <div class="card-msg" id="cardMsg"></div>
-  <button class="card-btn" id="cardBtn">💝 点我</button>
+<!-- ====== Card Overlay (shared) ====== -->
+<div class="card-overlay" id="cardOverlay">
+  <div class="backdrop" id="cardBackdrop"></div>
+  <div class="card-dialog">
+    <div class="card-close" id="cardClose">✕</div>
+    <div class="card-title">💌 520 快乐</div>
+    <div class="card-date">2026 · 05 · 20</div>
+    <div class="card-divider"></div>
+    <div class="card-msg" id="cardMsg"></div>
+    <button class="card-btn" id="cardBtn">💝 点我</button>
+    <div class="card-secret-hint">🤫 连点52下有惊喜</div>
+  </div>
 </div>
+
+<!-- ====== Easter Egg: 52-click transfer prank ====== -->
+<div class="transfer-overlay" id="transferOverlay">
+  <div class="transfer-backdrop" id="transferBackdrop"></div>
+  <div class="transfer-card">
+    <div class="transfer-close" id="transferClose">✕</div>
+    <div class="transfer-emoji">🤑💸</div>
+    <div class="transfer-title">转账通知</div>
+    <div class="transfer-body">
+      <span class="transfer-name">对方</span> 的微信钱包余额<br>
+      <span class="transfer-amount">¥ 52,000.00</span><br>
+      已全部转入你的钱包 💰
+    </div>
+    <div class="transfer-meme">😂😂😂</div>
+    <div class="transfer-footer">520快乐 · 此转账纯属娱乐 🤪</div>
+  </div>
+</div>
+
+<!-- ====== Bottom Nav ====== -->
+<nav class="nav" id="nav">
+  <div class="nav-item pos-left" data-slot="left"></div>
+  <div class="nav-item pos-center" data-slot="center"></div>
+  <div class="nav-item pos-right" data-slot="right"></div>
+</nav>
 
 <script>
 (function() {
-  const messages = [
+  // ==================== SHARED STATE ====================
+  let currentMode = 0;
+  const fxLayer = document.getElementById('fxLayer');
+  const stageContents = document.querySelectorAll('.stage-content');
+  const navItems = document.querySelectorAll('[data-slot]');
+
+  const loveMessages = [
     '遇见你，\n是我最美丽的意外。\n\n愿每一天都如今天般甜蜜 💕',
     '世间万物，\n都不及你眼里的星辰。\n\n520快乐 🌹',
     '和你在一起的时光，\n连空气都是甜的。\n\n谢谢你出现在我的世界 ✨',
     '有些人，\n一旦遇见便一眼万年。\n\n你就是那个人 💖',
     '往后余生，\n风雪是你，平淡是你，\n目光所至都是你 💗',
   ];
-  const chosenMsg = messages[Math.floor(Math.random() * messages.length)];
+  const balloonWords = ['喜欢', '心动', '永远', '甜蜜', '爱你', '守护', '陪伴', '珍惜', '温柔', '想你', '在一起', '一辈子'];
+  const wishTexts = ['愿你所愿皆成真 ✨', '许你一世长安 💫', '星光不负赶路人 🌙', '宇宙山河浪漫都给你 💖', '你比星河更耀眼 🌟', '想和你一起看星星 💗'];
 
-  // --- Canvas Background ---
+  function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // ==================== CANVAS BG ====================
   const canvas = document.getElementById('bg');
   const ctx = canvas.getContext('2d');
-  let particles = [];
-  let animId;
+  let particles = [], animId;
+  let bgHue = 340; // pinkish
 
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
   resizeCanvas();
-  window.addEventListener('resize', () => {
-    resizeCanvas();
-    initParticles();
-  });
+  window.addEventListener('resize', () => { resizeCanvas(); initParticles(); });
 
   function initParticles() {
     const count = Math.floor((canvas.width * canvas.height) / 8000);
     particles = [];
     for (let i = 0; i < count; i++) {
       particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
         r: Math.random() * 2 + 0.5,
         vx: (Math.random() - 0.5) * 0.3,
         vy: (Math.random() - 0.5) * 0.3 - 0.2,
@@ -337,11 +771,19 @@
     }
   }
 
+  const bgThemes = [
+    { h: 340, s: 80, l: 70 }, // pink
+    { h: 30, s: 80, l: 65 },  // warm gold
+    { h: 260, s: 60, l: 75 }, // cool blue-purple
+    { h: 350, s: 90, l: 65 }, // rose red
+    { h: 45, s: 90, l: 70 },  // gold
+  ];
+
   function drawParticles(time) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const theme = bgThemes[currentMode];
     for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x += p.vx; p.y += p.vy;
       if (p.x < -10) p.x = canvas.width + 10;
       if (p.x > canvas.width + 10) p.x = -10;
       if (p.y < -10) p.y = canvas.height + 10;
@@ -352,13 +794,13 @@
 
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,120,160,${a})`;
+      ctx.fillStyle = `hsla(${theme.h},${theme.s}%,${theme.l}%,${a})`;
       ctx.fill();
 
       if (Math.random() < 0.005) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,180,200,${a * 0.3})`;
+        ctx.fillStyle = `hsla(${theme.h},${theme.s}%,90%,${a * 0.3})`;
         ctx.fill();
       }
     }
@@ -368,76 +810,12 @@
     drawParticles(time);
     animId = requestAnimationFrame(animate);
   }
-
   initParticles();
   animId = requestAnimationFrame(animate);
 
-  // --- Envelope Interaction ---
-  const envelope = document.getElementById('envelope');
-  const hint = document.getElementById('hint');
-  const card = document.getElementById('card');
-  const cardMsg = document.getElementById('cardMsg');
-  const cardClose = document.getElementById('cardClose');
-  const cardBtn = document.getElementById('cardBtn');
-  const heartsRain = document.getElementById('heartsRain');
-  let isOpen = false;
-  let btnClickCount = 0;
-
-  cardMsg.textContent = chosenMsg;
-
-  envelope.addEventListener('click', () => {
-    if (isOpen) return;
-    isOpen = true;
-    envelope.classList.add('open');
-    hint.classList.add('hidden');
-
-    setTimeout(() => {
-      card.classList.add('show');
-      triggerHeartRain();
-    }, 500);
-  });
-
-  cardClose.addEventListener('click', (e) => {
-    e.stopPropagation();
-    card.classList.remove('show');
-    setTimeout(() => {
-      envelope.classList.remove('open');
-      isOpen = false;
-      hint.classList.remove('hidden');
-    }, 400);
-  });
-
-  cardBtn.addEventListener('click', () => {
-    btnClickCount++;
-    const emojis = ['💖', '💗', '💝', '💘', '💕', '💓', '🩷', '🌹', '✨', '💫'];
-    const btnRect = cardBtn.getBoundingClientRect();
-    const cx = btnRect.left + btnRect.width / 2;
-    const cy = btnRect.top + btnRect.height / 2;
-
-    for (let i = 0; i < 12; i++) {
-      setTimeout(() => {
-        const el = document.createElement('span');
-        el.className = 'emoji-burst';
-        el.style.left = cx + (Math.random() - 0.5) * 200 + 'px';
-        el.style.top = cy + (Math.random() - 0.5) * 100 + 'px';
-        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 1500);
-      }, i * 40);
-    }
-
-    if (btnClickCount <= 3) {
-      cardBtn.textContent = ['💝 再点一次', '💘 还有惊喜', '💖 你真可爱'][btnClickCount - 1];
-    } else {
-      cardBtn.textContent = '💕 ' + ['给你小心心', '全世界的温柔都给你', '你是最特别的存在', '每天都要开心呀'][(btnClickCount - 4) % 4];
-    }
-
-    triggerHeartRain();
-  });
-
-  function triggerHeartRain() {
-    const heartChars = ['❤️', '💗', '💖', '💕', '💝', '💘', '🩷', '🌸', '✨', '🌟'];
-    const count = 30;
+  // ==================== FX HELPERS ====================
+  function heartRain(count = 30) {
+    const chars = ['❤️','💗','💖','💕','💝','💘','🩷','🌸','✨','🌟'];
     for (let i = 0; i < count; i++) {
       setTimeout(() => {
         const el = document.createElement('span');
@@ -445,29 +823,724 @@
         el.style.left = Math.random() * 100 + '%';
         el.style.fontSize = (Math.random() * 20 + 18) + 'px';
         el.style.animationDuration = (Math.random() * 3 + 3) + 's';
-        el.style.animationDelay = '0s';
-        el.textContent = heartChars[Math.floor(Math.random() * heartChars.length)];
-        heartsRain.appendChild(el);
+        el.textContent = randomPick(chars);
+        fxLayer.appendChild(el);
         setTimeout(() => el.remove(), 6000);
       }, i * 50);
     }
   }
 
-  // --- Click anywhere to create heart pop ---
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('.envelope') || e.target.closest('.card') || e.target.closest('.card-btn')) return;
+  function emojiBurst(cx, cy, count = 12) {
+    const emojis = ['💖','💗','💝','💘','💕','💓','🩷','🌹','✨','💫','💐','💎'];
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const el = document.createElement('span');
+        el.className = 'emoji-burst';
+        el.style.left = cx + (Math.random() - 0.5) * 200 + 'px';
+        el.style.top = cy + (Math.random() - 0.5) * 100 + 'px';
+        el.textContent = randomPick(emojis);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1500);
+      }, i * 40);
+    }
+  }
 
+  function clickRipple(x, y) {
     const el = document.createElement('span');
     el.className = 'click-ripple';
-    el.style.left = e.clientX + 'px';
-    el.style.top = e.clientY + 'px';
-    el.textContent = ['❤️', '💗', '💖', '💕', '✨', '🌸'][Math.floor(Math.random() * 6)];
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    el.textContent = randomPick(['❤️','💗','💖','💕','✨','🌸','💝']);
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 1000);
+  }
+
+  // ==================== CARD OVERLAY ====================
+  const cardOverlay = document.getElementById('cardOverlay');
+  const cardBackdrop = document.getElementById('cardBackdrop');
+  const cardClose = document.getElementById('cardClose');
+  const cardMsg = document.getElementById('cardMsg');
+  const cardBtn = document.getElementById('cardBtn');
+  let btnCount = 0;
+
+  function showCard() {
+    cardMsg.textContent = randomPick(loveMessages);
+    btnCount = 0;
+    cardBtn.textContent = '💝 点我';
+    cardOverlay.classList.add('show');
+    heartRain(25);
+  }
+  function hideCard() {
+    cardOverlay.classList.remove('show');
+  }
+
+  cardClose.addEventListener('click', (e) => { e.stopPropagation(); hideCard(); });
+  cardBackdrop.addEventListener('click', hideCard);
+
+  // --- Transfer Easter Egg ---
+  const transferOverlay = document.getElementById('transferOverlay');
+  const transferBackdrop = document.getElementById('transferBackdrop');
+  const transferClose = document.getElementById('transferClose');
+
+  function showTransferEasterEgg() {
+    cardOverlay.classList.remove('show');
+    transferOverlay.classList.add('show');
+    // money rain
+    for (let i = 0; i < 40; i++) {
+      setTimeout(() => {
+        const el = document.createElement('span');
+        el.className = 'rain-heart';
+        el.style.left = Math.random() * 100 + '%';
+        el.style.fontSize = (Math.random() * 24 + 16) + 'px';
+        el.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        el.textContent = randomPick(['💰','💸','💵','🤑','💎','🪙','💲','💶','💷','💴']);
+        fxLayer.appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+      }, i * 40);
+    }
+  }
+
+  function closeTransferOverlay() {
+    transferOverlay.classList.remove('show');
+    btnCount = 0;
+    cardBtn.textContent = '💝 点我';
+    // reset envelope so user can open again
+    envelope.classList.remove('open');
+    envelopeOpen = false;
+    hintEnv.classList.remove('hidden');
+  }
+
+  transferClose.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeTransferOverlay();
+  });
+  transferBackdrop.addEventListener('click', closeTransferOverlay);
+
+  cardBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    btnCount++;
+    const rect = cardBtn.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    emojiBurst(cx, cy, 14);
+
+    // Easter egg: 52 clicks
+    if (btnCount === 52) {
+      showTransferEasterEgg();
+      return;
+    }
+    // progressive hints toward 52
+    if (btnCount === 10) {
+      cardBtn.textContent = '💫 咦？你还在点...';
+    } else if (btnCount === 20) {
+      cardBtn.textContent = '💕 别停...有隐藏彩蛋';
+    } else if (btnCount === 30) {
+      cardBtn.textContent = '💘 快了快了...还差22下';
+    } else if (btnCount === 40) {
+      cardBtn.textContent = '💗 马上有惊喜！差12下';
+    } else if (btnCount === 48) {
+      cardBtn.textContent = '🔥 就差4下了！！！';
+    } else if (btnCount <= 3) {
+      cardBtn.textContent = ['💝 再点一次', '💘 还有惊喜', '💖 你真可爱'][btnCount - 1];
+    } else {
+      cardBtn.textContent = '💕 ' + randomPick(['给你小心心','全世界的温柔都给你','你是最特别的存在','每天都要开心呀','今天超爱你','继续点有惊喜']);
+    }
+    heartRain(20);
   });
 
-  // --- Start with a gentle heart rain ---
-  setTimeout(triggerHeartRain, 800);
+  // ==================== MODE SWITCHING ====================
+  function switchMode(idx) {
+    // reset envelope state when leaving mode 0
+    if (currentMode === 0 && idx !== 0) {
+      cardOverlay.classList.remove('show');
+      transferOverlay.classList.remove('show');
+      envelope.classList.remove('open');
+      envelopeOpen = false;
+      hintEnv.classList.remove('hidden');
+    }
+    currentMode = idx;
+    stageContents.forEach(c => c.classList.remove('active'));
+    stageContents[idx].classList.add('active');
+    updateNavPositions(idx);
+
+    // re-init mode-specific content
+    if (idx === 1) initBalloons();
+    if (idx === 2) initStars();
+    if (idx === 3) initGarden();
+    if (idx === 4) initFirework();
+    if (idx === 5) initOracle();
+    if (idx === 6) initHeartbeat();
+    if (idx === 7) initNotesWall();
+  }
+
+  const modeDefs = [
+    { icon: '💌', label: '信封' },
+    { icon: '🎈', label: '气球' },
+    { icon: '🌟', label: '星空' },
+    { icon: '🌹', label: '玫瑰' },
+    { icon: '🎆', label: '烟花' },
+    { icon: '🔮', label: '答案' },
+    { icon: '💓', label: '心动' },
+    { icon: '💌', label: '留言' },
+  ];
+
+  const navSlots = {
+    left: document.querySelector('[data-slot="left"]'),
+    center: document.querySelector('[data-slot="center"]'),
+    right: document.querySelector('[data-slot="right"]'),
+  };
+
+  function updateNavPositions(centerIdx) {
+    const total = modeDefs.length;
+    const leftIdx = (centerIdx - 1 + total) % total;
+    const rightIdx = (centerIdx + 1) % total;
+
+    function fillSlot(slot, idx) {
+      slot.innerHTML = `<span class="icon">${modeDefs[idx].icon}</span><span class="label">${modeDefs[idx].label}</span>`;
+      slot.dataset.idx = idx;
+    }
+    fillSlot(navSlots.left, leftIdx);
+    fillSlot(navSlots.center, centerIdx);
+    fillSlot(navSlots.right, rightIdx);
+
+    // pulse center on switch
+    navSlots.center.classList.remove('nav-pulse');
+    void navSlots.center.offsetWidth;
+    navSlots.center.classList.add('nav-pulse');
+  }
+
+  Object.values(navSlots).forEach(slot => {
+    slot.addEventListener('click', () => {
+      const idx = parseInt(slot.dataset.idx);
+      if (idx !== currentMode) switchMode(idx);
+    });
+  });
+
+  // ==================== MODE 1: 信封 ====================
+  const envelope = document.getElementById('envelope');
+  const hintEnv = document.getElementById('hintEnv');
+  let envelopeOpen = false;
+
+  envelope.addEventListener('click', () => {
+    if (envelopeOpen) return;
+    envelopeOpen = true;
+    envelope.classList.add('open');
+    hintEnv.classList.add('hidden');
+    setTimeout(() => { showCard(); }, 500);
+  });
+
+  // reset envelope after card close
+  const origHideCard = hideCard;
+  hideCard = function() {
+    origHideCard();
+    if (currentMode === 0) {
+      setTimeout(() => {
+        envelope.classList.remove('open');
+        envelopeOpen = false;
+        hintEnv.classList.remove('hidden');
+      }, 400);
+    }
+  };
+
+  // ==================== MODE 2: 气球 ====================
+  function initBalloons() {
+    const area = document.getElementById('balloonArea');
+    area.innerHTML = '';
+    const colors = [
+      'linear-gradient(135deg, #ff6b8a, #e74c6f)',
+      'linear-gradient(135deg, #f06292, #d81b60)',
+      'linear-gradient(135deg, #ff9a9e, #f06292)',
+      'linear-gradient(135deg, #fab1a0, #e17055)',
+      'linear-gradient(135deg, #ff7675, #d63031)',
+      'linear-gradient(135deg, #fd79a8, #e84393)',
+      'linear-gradient(135deg, #f8c291, #e74c6f)',
+      'linear-gradient(135deg, #ffb8b8, #c0392b)',
+    ];
+    const balloons = [];
+    for (let i = 0; i < 8; i++) {
+      const b = document.createElement('div');
+      b.className = 'balloon';
+      b.style.background = colors[i];
+      b.style.left = (8 + Math.random() * 76) + '%';
+      b.style.top = (10 + Math.random() * 70) + '%';
+      b.style.animationDuration = (4 + Math.random() * 5) + 's';
+      b.style.animationDelay = Math.random() * 3 + 's';
+      b.textContent = '🎈';
+      balloons.push(b);
+      area.appendChild(b);
+    }
+
+    // balloon pop
+    area.querySelectorAll('.balloon').forEach(b => {
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (b.classList.contains('popping')) return;
+        b.classList.add('popping');
+
+        const rect = b.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        // show word
+        const word = document.createElement('span');
+        word.className = 'balloon-words';
+        word.textContent = randomPick(balloonWords);
+        word.style.left = cx + 'px';
+        word.style.top = cy + 'px';
+        document.body.appendChild(word);
+        setTimeout(() => word.remove(), 3000);
+
+        // mini burst
+        for (let j = 0; j < 6; j++) {
+          setTimeout(() => {
+            const spark = document.createElement('span');
+            spark.className = 'emoji-burst';
+            spark.style.left = cx + (Math.random() - 0.5) * 120 + 'px';
+            spark.style.top = cy + (Math.random() - 0.5) * 80 + 'px';
+            spark.textContent = randomPick(['✨','💫','💕','💖','🌟']);
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 1500);
+          }, j * 30);
+        }
+
+        // respawn after delay
+        setTimeout(() => {
+          b.classList.remove('popping');
+          b.style.left = (8 + Math.random() * 76) + '%';
+          b.style.top = (10 + Math.random() * 70) + '%';
+          b.style.animationDuration = (4 + Math.random() * 5) + 's';
+          b.style.animationDelay = Math.random() * 3 + 's';
+          b.textContent = '🎈';
+        }, 600);
+      });
+    });
+  }
+
+  // ==================== MODE 3: 星空 ====================
+  let starsDots = [];
+
+  function initStars() {
+    const area = document.getElementById('starsArea');
+    area.innerHTML = '';
+    starsDots = [];
+
+    // pre-place some twinkling stars
+    for (let i = 0; i < 15; i++) {
+      const star = document.createElement('span');
+      star.className = 'star-dot';
+      star.style.left = (5 + Math.random() * 90) + '%';
+      star.style.top = (5 + Math.random() * 90) + '%';
+      star.style.animationDelay = Math.random() * 2 + 's';
+      star.style.animationDuration = (1.5 + Math.random() * 3) + 's';
+      star.textContent = randomPick(['⭐','✨','🌟','💫','⭐']);
+      star.dataset.x = star.style.left;
+      star.dataset.y = star.style.top;
+      area.appendChild(star);
+      starsDots.push(star);
+    }
+
+    area.onclick = function(e) {
+      const rect = area.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const px = (x / rect.width * 100);
+      const py = (y / rect.height * 100);
+
+      // add a new star
+      const star = document.createElement('span');
+      star.className = 'star-dot';
+      star.style.left = px + '%';
+      star.style.top = py + '%';
+      star.style.animationDelay = Math.random() * 2 + 's';
+      star.textContent = randomPick(['⭐','✨','🌟','💫']);
+      area.appendChild(star);
+      starsDots.push({ left: px + '%', top: py + '%' });
+
+      // connect to nearest star
+      if (starsDots.length > 1) {
+        const prev = starsDots[Math.floor(Math.random() * (starsDots.length - 1))];
+        const prevLeft = parseFloat(prev.left || prev.style?.left || '50');
+        const prevTop = parseFloat(prev.style.top || prev.dataset?.y || '50');
+        const prevAbsX = rect.left + prevLeft / 100 * rect.width;
+        const prevAbsY = rect.top + prevTop / 100 * rect.height;
+
+        const line = document.createElement('div');
+        line.className = 'star-line';
+        const dx = e.clientX - prevAbsX;
+        const dy = e.clientY - prevAbsY;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        line.style.width = len + 'px';
+        line.style.left = prevAbsX + 'px';
+        line.style.top = prevAbsY + 'px';
+        line.style.transform = `rotate(${angle}deg)`;
+        line.style.animationDuration = (1.5 + Math.random()) + 's';
+        document.body.appendChild(line);
+        setTimeout(() => line.remove(), 2500);
+      }
+
+      // shooting star occasionally
+      if (Math.random() < 0.4) {
+        const shoot = document.createElement('span');
+        shoot.className = 'shooting-star';
+        shoot.style.left = e.clientX + 'px';
+        shoot.style.top = e.clientY + 'px';
+        shoot.textContent = '💫';
+        document.body.appendChild(shoot);
+        setTimeout(() => shoot.remove(), 1500);
+      }
+
+      // wish text occasionally
+      if (Math.random() < 0.3 || starsDots.length % 6 === 0) {
+        const wish = document.createElement('span');
+        wish.className = 'wish-text';
+        wish.textContent = randomPick(wishTexts);
+        wish.style.left = e.clientX + 'px';
+        wish.style.top = e.clientY + 'px';
+        document.body.appendChild(wish);
+        setTimeout(() => wish.remove(), 2500);
+      }
+
+      clickRipple(e.clientX, e.clientY);
+    };
+  }
+
+  // ==================== MODE 4: 玫瑰 ====================
+  function initGarden() {
+    const area = document.getElementById('gardenArea');
+    area.innerHTML = '';
+    const roseEmojis = ['🌷','🌹','🪷','🌸','💐','🏵️','🌺','🌻','💮','🌼'];
+    const petalColors = ['🌸','💮','🌷','🏵️','🌺','💐'];
+
+    for (let i = 0; i < 6; i++) {
+      const bud = document.createElement('div');
+      bud.className = 'rose-bud';
+      bud.textContent = roseEmojis[i];
+      bud.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (bud.classList.contains('bloomed')) return;
+        if (bud.classList.contains('blooming')) return;
+
+        bud.classList.add('blooming');
+        const rect = bud.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+
+        // petal burst
+        for (let j = 0; j < 10; j++) {
+          setTimeout(() => {
+            const petal = document.createElement('span');
+            petal.className = 'petal';
+            petal.style.left = cx + (Math.random() - 0.5) * 100 + 'px';
+            petal.style.top = cy + 'px';
+            petal.style.fontSize = (16 + Math.random() * 16) + 'px';
+            petal.style.animationDuration = (2 + Math.random() * 3) + 's';
+            petal.textContent = randomPick(petalColors);
+            document.body.appendChild(petal);
+            setTimeout(() => petal.remove(), 5000);
+          }, j * 50);
+        }
+
+        // show word
+        const word = document.createElement('span');
+        word.className = 'balloon-words';
+        word.textContent = randomPick(['美丽','温柔','可爱','动人','甜蜜','幸福','浪漫']);
+        word.style.left = cx + 'px';
+        word.style.top = cy + 'px';
+        document.body.appendChild(word);
+        setTimeout(() => word.remove(), 3000);
+
+        setTimeout(() => {
+          bud.classList.remove('blooming');
+          bud.classList.add('bloomed');
+        }, 800);
+      });
+      area.appendChild(bud);
+    }
+  }
+
+  // ==================== MODE 5: 烟花 ====================
+  function initFirework() {
+    // just ensure trigger is there
+  }
+
+  const fireworkTrigger = document.getElementById('fireworkTrigger');
+  fireworkTrigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const cx = e.clientX;
+    const cy = e.clientY;
+    triggerFirework(cx, cy);
+  });
+
+  // Also allow tap anywhere in firework area
+  document.getElementById('fireworkArea').addEventListener('click', function(e) {
+    if (e.target === fireworkTrigger) return;
+    triggerFirework(e.clientX, e.clientY);
+  });
+
+  function triggerFirework(cx, cy) {
+    const colors = [
+      '#ff6b8a','#f06292','#ff7675','#fd79a8','#f8c291',
+      '#ffeaa7','#ff9a9e','#fab1a0','#e17055','#ffb8b8',
+    ];
+    const sparkCount = 30 + Math.floor(Math.random() * 20);
+
+    for (let i = 0; i < sparkCount; i++) {
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 40 + Math.random() * 100;
+      spark.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      spark.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+      spark.style.left = cx + 'px';
+      spark.style.top = cy + 'px';
+      spark.style.background = randomPick(colors);
+      spark.style.width = (2 + Math.random() * 5) + 'px';
+      spark.style.height = spark.style.width;
+      spark.style.boxShadow = `0 0 ${4 + Math.random() * 6}px ${spark.style.background}`;
+      spark.style.animationDuration = (0.8 + Math.random() * 1.4) + 's';
+      document.body.appendChild(spark);
+      setTimeout(() => spark.remove(), 2000);
+    }
+
+    // message
+    const msg = document.createElement('span');
+    msg.className = 'firework-msg';
+    msg.textContent = randomPick(['520','爱你','❤️','幸福','永远','美好','甜蜜','浪漫']);
+    msg.style.left = cx + 'px';
+    msg.style.top = cy + 'px';
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2000);
+
+    // trail sparks
+    for (let i = 0; i < 8; i++) {
+      setTimeout(() => {
+        const trail = document.createElement('div');
+        trail.className = 'spark';
+        const ta = Math.random() * Math.PI * 2;
+        const td = 20 + Math.random() * 40;
+        trail.style.setProperty('--dx', Math.cos(ta) * td + 'px');
+        trail.style.setProperty('--dy', Math.sin(ta) * td + 'px');
+        trail.style.left = cx + 'px'; trail.style.top = cy + 'px';
+        trail.style.background = randomPick(colors);
+        trail.style.width = trail.style.height = (2 + Math.random() * 3) + 'px';
+        trail.style.boxShadow = `0 0 4px ${trail.style.background}`;
+        trail.style.animationDuration = (0.5 + Math.random()) + 's';
+        document.body.appendChild(trail);
+        setTimeout(() => trail.remove(), 1500);
+      }, i * 60);
+    }
+  }
+
+  // ==================== MODE 6: 答案之书 ====================
+  const oracleAnswers = [
+    '💖 命中注定', '💕 双向奔赴', '✨ 你是唯一', '🌙 心有灵犀',
+    '💫 缘分天定', '🌸 甜甜蜜蜜', '💗 一眼万年', '🌟 完美契合',
+    '💝 此生挚爱', '🩷 佳偶天成', '💘 天生一对', '💞 心心相印',
+    '🤍 愿得一人心', '💐 白首不相离', '🫶 执子之手', '💎 你最珍贵',
+  ];
+
+  function initOracle() {
+    const crystal = document.getElementById('oracleCrystal');
+    const answerEl = document.getElementById('oracleAnswer');
+    answerEl.textContent = '';
+    crystal.classList.remove('shaking');
+
+    crystal.onclick = function(e) {
+      e.stopPropagation();
+      if (crystal.classList.contains('shaking')) return;
+      crystal.classList.add('shaking');
+      answerEl.textContent = '🔮 命运正在显现...';
+      answerEl.style.opacity = '0.5';
+
+      const rect = crystal.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      // sparkles around crystal
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          const s = document.createElement('span');
+          s.className = 'emoji-burst';
+          s.style.left = cx + (Math.random() - 0.5) * 180 + 'px';
+          s.style.top = cy + (Math.random() - 0.5) * 120 + 'px';
+          s.textContent = randomPick(['✨','💫','🌟','⭐','🔮','💜']);
+          document.body.appendChild(s);
+          setTimeout(() => s.remove(), 1500);
+        }, i * 30);
+      }
+
+      setTimeout(() => {
+        answerEl.textContent = randomPick(oracleAnswers);
+        answerEl.style.opacity = '1';
+        crystal.classList.remove('shaking');
+      }, 800);
+    };
+  }
+
+  // ==================== MODE 7: 心动频率 ====================
+  function initHeartbeat() {
+    const heart = document.getElementById('hbHeart');
+    const bpmEl = document.getElementById('hbBpm');
+    const msgEl = document.getElementById('hbMsg');
+    let bpm = 72;
+    let lastTap = 0;
+    let tapCount = 0;
+
+    bpmEl.innerHTML = '72 <span>BPM</span>';
+    msgEl.textContent = '轻触红心';
+    heart.style.animationDuration = '1s';
+
+    heart.onclick = function(e) {
+      e.stopPropagation();
+      tapCount++;
+      bpm = Math.min(200, bpm + 8);
+      const interval = 60 / bpm;
+      heart.style.animationDuration = interval + 's';
+      heart.classList.remove('beat');
+      void heart.offsetWidth;
+      heart.classList.add('beat');
+
+      bpmEl.innerHTML = bpm + ' <span>BPM</span>';
+
+      // Messages based on BPM thresholds
+      const msgs = [];
+      if (bpm >= 80) msgs.push('心跳加速中...');
+      if (bpm >= 100) msgs.push('💗 心动的感觉');
+      if (bpm >= 120) msgs.push('💕 越跳越快了');
+      if (bpm >= 140) msgs.push('💘 小鹿乱撞');
+      if (bpm >= 160) msgs.push('💝 控制不住的心跳');
+      if (bpm >= 180) msgs.push('💖 你就是我的心跳');
+      if (bpm >= 200) msgs.push('🔥 满格心动！');
+      msgEl.textContent = msgs[msgs.length - 1] || '轻触红心';
+
+      // burst hearts
+      const rect = heart.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          const el = document.createElement('span');
+          el.className = 'emoji-burst';
+          el.style.left = cx + (Math.random() - 0.5) * 140 + 'px';
+          el.style.top = cy + (Math.random() - 0.5) * 100 + 'px';
+          el.style.fontSize = (18 + Math.random() * 12) + 'px';
+          el.textContent = randomPick(['💗','💓','💖','💕','💝']);
+          document.body.appendChild(el);
+          setTimeout(() => el.remove(), 1500);
+        }, i * 30);
+      }
+
+      // Slowly decay BPM if not tapped
+      clearTimeout(heart._decayTimer);
+      heart._decayTimer = setTimeout(() => {
+        const decay = setInterval(() => {
+          if (bpm > 72) {
+            bpm = Math.max(72, bpm - 1);
+            heart.style.animationDuration = (60 / bpm) + 's';
+            bpmEl.innerHTML = bpm + ' <span>BPM</span>';
+            if (bpm <= 80) msgEl.textContent = '轻触红心';
+            if (bpm <= 72) clearInterval(decay);
+          } else {
+            clearInterval(decay);
+          }
+        }, 300);
+      }, 1500);
+    };
+  }
+
+  // ==================== MODE 8: 甜蜜留言墙 ====================
+  const noteColors = ['#ffd6e0','#ffebd6','#fff9c4','#d4f0ff','#e8dff5','#d5f5e3','#fce4ec','#fff3e0'];
+  const noteMessages = [
+    '今天也很喜欢你 💕', '你是最棒的', '每天都要开心', '注意休息哦',
+    '你笑起来真好看', '520快乐', '好想你', '要幸福哦',
+    '你值得所有美好', '一起加油', '温柔如你', '全世界你最可爱',
+  ];
+
+  function initNotesWall() {
+    const wall = document.getElementById('notesWall');
+    wall.innerHTML = '';
+
+    // Pre-place some notes
+    for (let i = 0; i < 6; i++) {
+      createNote(wall);
+    }
+
+    wall.onclick = function(e) {
+      if (e.target === wall) {
+        createNote(wall);
+      }
+    };
+  }
+
+  function createNote(wall) {
+    const note = document.createElement('div');
+    note.className = 'sticky-note';
+    note.style.background = randomPick(noteColors);
+    note.textContent = randomPick(noteMessages);
+    note.style.animationDelay = '0s';
+
+    note.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const rect = note.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+
+      // pop effect
+      const pop = document.createElement('span');
+      pop.className = 'note-pop';
+      pop.textContent = note.textContent;
+      pop.style.left = cx + 'px';
+      pop.style.top = cy + 'px';
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), 3000);
+
+      // change note content
+      note.textContent = randomPick(noteMessages);
+      note.style.background = randomPick(noteColors);
+
+      for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+          const s = document.createElement('span');
+          s.className = 'emoji-burst';
+          s.style.left = cx + (Math.random() - 0.5) * 100 + 'px';
+          s.style.top = cy + (Math.random() - 0.5) * 80 + 'px';
+          s.style.fontSize = (14 + Math.random() * 10) + 'px';
+          s.textContent = randomPick(['💌','💝','💗','✨']);
+          document.body.appendChild(s);
+          setTimeout(() => s.remove(), 1500);
+        }, i * 30);
+      }
+    });
+
+    wall.appendChild(note);
+  }
+
+  // ==================== GLOBAL CLICK ====================
+  document.addEventListener('click', (e) => {
+    // Don't create ripple for nav, card overlay, or mode-specific interactive elements
+    if (e.target.closest('.nav') || e.target.closest('.nav-item')) return;
+    if (e.target.closest('#cardOverlay') && !e.target.closest('#cardBtn')) return;
+    if (e.target.closest('.balloon')) return;
+    if (e.target.closest('.rose-bud')) return;
+    if (e.target.closest('#fireworkArea')) return;
+    if (e.target.closest('#starsArea')) return;
+    if (e.target.closest('.envelope')) return;
+    if (e.target.closest('#oracleArea')) return;
+    if (e.target.closest('#heartbeatArea')) return;
+    if (e.target.closest('#notesWall')) return;
+
+    clickRipple(e.clientX, e.clientY);
+  });
+
+  // ==================== INIT ====================
+  switchMode(0);
+  initBalloons();
+  initStars();
+  initGarden();
+  initOracle();
+  initHeartbeat();
+  initNotesWall();
+  setTimeout(() => heartRain(20), 800);
 })();
 </script>
 </body>
