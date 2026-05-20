@@ -21,6 +21,16 @@ export const toolRegistry: ToolDefinition[] = [
     enabled: true,
   },
   {
+    id: 'music',
+    name: '云音乐',
+    icon: '🎵',
+    description: '多平台音乐搜索·歌单导入·在线播放',
+    category: 'comprehensive',
+    route: '/pages/tools/music/music',
+    needCloud: false,
+    enabled: true,
+  },
+  {
     id: 'greeting-card',
     name: '祝福贺卡',
     icon: '💌',

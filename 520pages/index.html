@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>520 ❤️</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #1a0a0a 0%, #2d0a1a 30%, #1a0a2d 60%, #0a0a1a 100%);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 0; }
+
+  .stage {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+  }
+
+  .envelope {
+    width: 260px;
+    height: 180px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .envelope:active { transform: scale(0.95); }
+
+  .envelope-body {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 160px;
+    background: linear-gradient(135deg, #e74c6f, #c0392b);
+    border-radius: 12px;
+    clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%);
+    box-shadow: 0 10px 40px rgba(231, 76, 111, 0.4);
+  }
+
+  .envelope-flap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(135deg, #f06292, #e74c6f);
+    clip-path: polygon(0 0, 50% 100%, 100% 0);
+    border-radius: 12px 12px 0 0;
+    transform-origin: top center;
+    transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    z-index: 2;
+    box-shadow: 0 4px 20px rgba(231, 76, 111, 0.3);
+  }
+  .envelope.open .envelope-flap { transform: rotateX(180deg); }
+
+  .envelope-heart {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    font-size: 40px;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .envelope.open .envelope-heart { opacity: 0; }
+  .envelope-heart-inner {
+    display: inline-block;
+    animation: heartBeat 1.2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6));
+  }
+  @keyframes heartBeat {
+    0%, 100% { transform: scale(1); }
+    15% { transform: scale(1.3); }
+    30% { transform: scale(1); }
+    45% { transform: scale(1.2); }
+    60% { transform: scale(1); }
+  }
+
+  .hint {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    margin-top: 20px;
+    animation: fadeHint 2s ease-in-out infinite;
+    letter-spacing: 2px;
+  }
+  @keyframes fadeHint {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  .hint.hidden { opacity: 0; pointer-events: none; }
+
+  .card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    width: 300px;
+    max-width: 90vw;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 35px 25px;
+    text-align: center;
+    z-index: 10;
+    opacity: 0;
+    transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+  }
+  .card.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  .card-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    border-radius: 50%;
+    transition: background 0.2s;
+  }
+  .card-close:active { background: rgba(0, 0, 0, 0.05); }
+
+  .card-title {
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #e74c6f, #f06292, #e74c6f);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 2s linear infinite;
+    margin-bottom: 8px;
+  }
+  @keyframes shimmer {
+    to { background-position: 200% center; }
+  }
+
+  .card-date {
+    font-size: 13px;
+    color: #ccc;
+    margin-bottom: 20px;
+    letter-spacing: 2px;
+  }
+
+  .card-msg {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.8;
+    margin-bottom: 20px;
+    white-space: pre-line;
+  }
+
+  .card-divider {
+    width: 40px;
+    height: 2px;
+    background: linear-gradient(90deg, #e74c6f, #f06292);
+    margin: 0 auto 20px;
+    border-radius: 1px;
+  }
+
+  .card-btn {
+    display: inline-block;
+    padding: 12px 35px;
+    background: linear-gradient(135deg, #e74c6f, #c0392b);
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    font-size: 15px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 6px 20px rgba(231, 76, 111, 0.4);
+  }
+  .card-btn:active { transform: scale(0.95); }
+
+  .hearts-rain {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .rain-heart {
+    position: absolute;
+    animation: rainFall linear forwards;
+    opacity: 0.8;
+  }
+  @keyframes rainFall {
+    0% {
+      transform: translateY(-10vh) rotate(0deg) scale(0.5);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(105vh) rotate(360deg) scale(1);
+      opacity: 0;
+    }
+  }
+
+  .click-ripple {
+    position: fixed;
+    pointer-events: none;
+    z-index: 8;
+    font-size: 30px;
+    animation: popUp 1s ease-out forwards;
+  }
+  @keyframes popUp {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translate(-50%, -80%) scale(1.5);
+      opacity: 0.8;
+    }
+    100% {
+      transform: translate(-50%, -200%) scale(0.5);
+      opacity: 0;
+    }
+  }
+
+  .emoji-burst {
+    position: fixed;
+    pointer-events: none;
+    z-index: 8;
+    font-size: 24px;
+    animation: burstUp 1.5s ease-out forwards;
+  }
+  @keyframes burstUp {
+    0% {
+      transform: translate(-50%, -50%) scale(0) rotate(0deg);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-50%, -300%) scale(1.5) rotate(180deg);
+      opacity: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div class="hearts-rain" id="heartsRain"></div>
+
+<div class="stage" id="stage">
+  <div class="envelope" id="envelope">
+    <div class="envelope-body"></div>
+    <div class="envelope-flap"></div>
+    <div class="envelope-heart">
+      <span class="envelope-heart-inner">❤️</span>
+    </div>
+  </div>
+  <div class="hint" id="hint">👆 点一下信封</div>
+</div>
+
+<div class="card" id="card">
+  <div class="card-close" id="cardClose">✕</div>
+  <div class="card-title">💌 520 快乐</div>
+  <div class="card-date">2026 · 05 · 20</div>
+  <div class="card-divider"></div>
+  <div class="card-msg" id="cardMsg"></div>
+  <button class="card-btn" id="cardBtn">💝 点我</button>
+</div>
+
+<script>
+(function() {
+  const messages = [
+    '遇见你，\n是我最美丽的意外。\n\n愿每一天都如今天般甜蜜 💕',
+    '世间万物，\n都不及你眼里的星辰。\n\n520快乐 🌹',
+    '和你在一起的时光，\n连空气都是甜的。\n\n谢谢你出现在我的世界 ✨',
+    '有些人，\n一旦遇见便一眼万年。\n\n你就是那个人 💖',
+    '往后余生，\n风雪是你，平淡是你，\n目光所至都是你 💗',
+  ];
+  const chosenMsg = messages[Math.floor(Math.random() * messages.length)];
+
+  // --- Canvas Background ---
+  const canvas = document.getElementById('bg');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let animId;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    initParticles();
+  });
+
+  function initParticles() {
+    const count = Math.floor((canvas.width * canvas.height) / 8000);
+    particles = [];
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 2 + 0.5,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3 - 0.2,
+        alpha: Math.random() * 0.6 + 0.2,
+        pulseSpeed: Math.random() * 0.02 + 0.005,
+        pulseOffset: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function drawParticles(time) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const p of particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < -10) p.x = canvas.width + 10;
+      if (p.x > canvas.width + 10) p.x = -10;
+      if (p.y < -10) p.y = canvas.height + 10;
+      if (p.y > canvas.height + 10) p.y = -10;
+
+      const pulseAlpha = p.alpha + Math.sin(time * p.pulseSpeed + p.pulseOffset) * 0.2;
+      const a = Math.max(0, Math.min(1, pulseAlpha));
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,120,160,${a})`;
+      ctx.fill();
+
+      if (Math.random() < 0.005) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,180,200,${a * 0.3})`;
+        ctx.fill();
+      }
+    }
+  }
+
+  function animate(time) {
+    drawParticles(time);
+    animId = requestAnimationFrame(animate);
+  }
+
+  initParticles();
+  animId = requestAnimationFrame(animate);
+
+  // --- Envelope Interaction ---
+  const envelope = document.getElementById('envelope');
+  const hint = document.getElementById('hint');
+  const card = document.getElementById('card');
+  const cardMsg = document.getElementById('cardMsg');
+  const cardClose = document.getElementById('cardClose');
+  const cardBtn = document.getElementById('cardBtn');
+  const heartsRain = document.getElementById('heartsRain');
+  let isOpen = false;
+  let btnClickCount = 0;
+
+  cardMsg.textContent = chosenMsg;
+
+  envelope.addEventListener('click', () => {
+    if (isOpen) return;
+    isOpen = true;
+    envelope.classList.add('open');
+    hint.classList.add('hidden');
+
+    setTimeout(() => {
+      card.classList.add('show');
+      triggerHeartRain();
+    }, 500);
+  });
+
+  cardClose.addEventListener('click', (e) => {
+    e.stopPropagation();
+    card.classList.remove('show');
+    setTimeout(() => {
+      envelope.classList.remove('open');
+      isOpen = false;
+      hint.classList.remove('hidden');
+    }, 400);
+  });
+
+  cardBtn.addEventListener('click', () => {
+    btnClickCount++;
+    const emojis = ['💖', '💗', '💝', '💘', '💕', '💓', '🩷', '🌹', '✨', '💫'];
+    const btnRect = cardBtn.getBoundingClientRect();
+    const cx = btnRect.left + btnRect.width / 2;
+    const cy = btnRect.top + btnRect.height / 2;
+
+    for (let i = 0; i < 12; i++) {
+      setTimeout(() => {
+        const el = document.createElement('span');
+        el.className = 'emoji-burst';
+        el.style.left = cx + (Math.random() - 0.5) * 200 + 'px';
+        el.style.top = cy + (Math.random() - 0.5) * 100 + 'px';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1500);
+      }, i * 40);
+    }
+
+    if (btnClickCount <= 3) {
+      cardBtn.textContent = ['💝 再点一次', '💘 还有惊喜', '💖 你真可爱'][btnClickCount - 1];
+    } else {
+      cardBtn.textContent = '💕 ' + ['给你小心心', '全世界的温柔都给你', '你是最特别的存在', '每天都要开心呀'][(btnClickCount - 4) % 4];
+    }
+
+    triggerHeartRain();
+  });
+
+  function triggerHeartRain() {
+    const heartChars = ['❤️', '💗', '💖', '💕', '💝', '💘', '🩷', '🌸', '✨', '🌟'];
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+      setTimeout(() => {
+        const el = document.createElement('span');
+        el.className = 'rain-heart';
+        el.style.left = Math.random() * 100 + '%';
+        el.style.fontSize = (Math.random() * 20 + 18) + 'px';
+        el.style.animationDuration = (Math.random() * 3 + 3) + 's';
+        el.style.animationDelay = '0s';
+        el.textContent = heartChars[Math.floor(Math.random() * heartChars.length)];
+        heartsRain.appendChild(el);
+        setTimeout(() => el.remove(), 6000);
+      }, i * 50);
+    }
+  }
+
+  // --- Click anywhere to create heart pop ---
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.envelope') || e.target.closest('.card') || e.target.closest('.card-btn')) return;
+
+    const el = document.createElement('span');
+    el.className = 'click-ripple';
+    el.style.left = e.clientX + 'px';
+    el.style.top = e.clientY + 'px';
+    el.textContent = ['❤️', '💗', '💖', '💕', '✨', '🌸'][Math.floor(Math.random() * 6)];
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+  });
+
+  // --- Start with a gentle heart rain ---
+  setTimeout(triggerHeartRain, 800);
+})();
+</script>
+</body>
+</html>
